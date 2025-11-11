@@ -5,6 +5,7 @@ import {
   refresh,
   logout,
   getUserProfile,
+  updateUserProfile,
 } from '../services/authService';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
@@ -53,6 +54,25 @@ export async function handleGetProfile(req: AuthenticatedRequest, res: Response,
       return;
     }
     const user = await getUserProfile(req.user.id);
+    res.status(200).json({ user });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function handleUpdateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    const { fullName, password, preferredLanguage, sex } = req.body;
+    const user = await updateUserProfile(req.user.id, {
+      fullName,
+      password,
+      preferredLanguage,
+      sex,
+    });
     res.status(200).json({ user });
   } catch (error) {
     next(error);

@@ -22,6 +22,13 @@ export interface CreateUserInput {
   preferredLanguage?: string;
 }
 
+export interface UpdateUserInput {
+  fullName?: string;
+  passwordHash?: string;
+  preferredLanguage?: string;
+  sex?: 'male' | 'female' | 'other' | null;
+}
+
 export async function findByPhone(phone: string): Promise<UserRecord | null> {
   const [rows] = await pool.query<UserRecord[]>('SELECT * FROM users WHERE phone = ? LIMIT 1', [phone]);
   return rows[0] ?? null;
@@ -40,5 +47,34 @@ export async function createUser(input: CreateUserInput): Promise<number> {
     [fullName, phone, email, passwordHash, sex, preferredLanguage],
   );
   return result.insertId;
+}
+
+export async function updateUser(userId: number, input: UpdateUserInput): Promise<void> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+
+  if (input.fullName !== undefined) {
+    fields.push('full_name = ?');
+    values.push(input.fullName);
+  }
+  if (input.passwordHash !== undefined) {
+    fields.push('password_hash = ?');
+    values.push(input.passwordHash);
+  }
+  if (input.preferredLanguage !== undefined) {
+    fields.push('preferred_language = ?');
+    values.push(input.preferredLanguage);
+  }
+  if (input.sex !== undefined) {
+    fields.push('sex = ?');
+    values.push(input.sex);
+  }
+
+  if (fields.length === 0) {
+    return;
+  }
+
+  values.push(userId);
+  await pool.execute<ResultSetHeader>(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
 }
 

@@ -112,10 +112,6 @@ export async function getTestSessionById(userId: number, sessionId: number): Pro
   return rows[0] ?? null;
 }
 
-export async function deleteMeasurementsForSession(connection: PoolConnection, sessionId: number): Promise<void> {
-  await connection.execute('DELETE FROM measurements WHERE test_session_id = ?', [sessionId]);
-}
-
 export async function insertMeasurements(
   connection: PoolConnection,
   sessionId: number,
@@ -125,13 +121,54 @@ export async function insertMeasurements(
     return;
   }
 
-  const values = measurements.map(m => [sessionId, m.indicatorId, m.value]);
-  await connection.query(
+  const rowsSql = measurements.map(() => '(?, ?, ?)').join(', ');
+  const params: number[] = [];
+  measurements.forEach(m => {
+    params.push(sessionId, m.indicatorId, m.value);
+  });
+
+  await connection.execute(
     `
     INSERT INTO measurements (test_session_id, indicator_id, value)
-    VALUES ?
+    VALUES ${rowsSql}
     `,
-    [values],
+    params,
+  );
+}
+
+export async function upsertMeasurements(
+  connection: PoolConnection,
+  sessionId: number,
+  measurements: MeasurementInput[],
+): Promise<void> {
+  if (measurements.length === 0) {
+    await connection.execute('DELETE FROM measurements WHERE test_session_id = ?', [sessionId]);
+    return;
+  }
+
+  const indicatorIds = measurements.map(m => m.indicatorId);
+  const indicatorPlaceholders = indicatorIds.map(() => '?').join(', ');
+
+  await connection.execute(
+    `DELETE FROM measurements
+     WHERE test_session_id = ?
+       AND indicator_id NOT IN (${indicatorPlaceholders})`,
+    [sessionId, ...indicatorIds],
+  );
+
+  const rowsSql = measurements.map(() => '(?, ?, ?)').join(', ');
+  const params: number[] = [];
+  measurements.forEach(m => {
+    params.push(sessionId, m.indicatorId, m.value);
+  });
+
+  await connection.execute(
+    `
+    INSERT INTO measurements (test_session_id, indicator_id, value)
+    VALUES ${rowsSql}
+    ON DUPLICATE KEY UPDATE value = VALUES(value)
+    `,
+    params,
   );
 }
 

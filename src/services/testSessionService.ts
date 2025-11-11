@@ -1,5 +1,4 @@
 import {
-  deleteMeasurementsForSession,
   deleteTestSession,
   getTestSessionById,
   insertMeasurements,
@@ -10,6 +9,7 @@ import {
   MeasurementRow,
   TestSessionRow,
   updateTestSession,
+  upsertMeasurements,
 } from '../repositories/testSessionRepository';
 import { ensureIndicatorExists } from './indicatorService';
 import { withTransaction } from '../utils/db';
@@ -117,6 +117,13 @@ function mapMeasurementRow(row: MeasurementRow): MeasurementResponse {
   };
 }
 
+function formatDateOnly(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function mapSessionRow(
   row: TestSessionRow,
   measurementRows: MeasurementRow[],
@@ -126,7 +133,7 @@ function mapSessionRow(
     label: row.label,
     month: row.month,
     year: row.year,
-    measuredAt: row.measured_at.toISOString().slice(0, 10),
+    measuredAt: formatDateOnly(row.measured_at),
     createdAt: row.created_at.toISOString(),
     measurements: measurementRows.map(mapMeasurementRow),
   };
@@ -251,8 +258,7 @@ export async function updateTestSessionDetails(
     });
 
     if (input.measurements) {
-      await deleteMeasurementsForSession(connection, sessionId);
-      await insertMeasurements(connection, sessionId, measurements);
+      await upsertMeasurements(connection, sessionId, measurements);
     }
   });
 

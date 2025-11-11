@@ -2,7 +2,7 @@ import { AppError } from '../utils/errors';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { signAccessToken } from '../utils/jwt';
 import { addDays, generateRefreshToken } from '../utils/token';
-import { createUser, findByPhone, findById, UserRecord } from '../repositories/userRepository';
+import { createUser, findByPhone, findById, updateUser, UserRecord } from '../repositories/userRepository';
 import {
   createSession,
   deleteSessionByToken,
@@ -38,6 +38,13 @@ export interface RegisterInput {
 export interface LoginInput {
   phone: string;
   password: string;
+}
+
+export interface UpdateProfileInput {
+  fullName: string;
+  password?: string;
+  preferredLanguage?: string;
+  sex?: 'male' | 'female' | 'other' | null;
 }
 
 function mapUser(record: UserRecord): AuthenticatedUser {
@@ -164,5 +171,60 @@ export async function getUserProfile(userId: number): Promise<AuthenticatedUser>
     throw new AppError(404, 'User not found');
   }
   return mapUser(user);
+}
+
+export async function updateUserProfile(userId: number, input: UpdateProfileInput): Promise<AuthenticatedUser> {
+  const existingUser = await findById(userId);
+  if (!existingUser) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const updates: {
+    fullName?: string;
+    passwordHash?: string;
+    preferredLanguage?: string;
+    sex?: 'male' | 'female' | 'other' | null;
+  } = {};
+
+  if (input.fullName !== undefined) {
+    const trimmedName = input.fullName.trim();
+    if (!trimmedName || trimmedName.length < 2) {
+      throw new AppError(400, 'Full name must be at least 2 characters');
+    }
+    updates.fullName = trimmedName;
+  }
+
+  if (input.password) {
+    if (input.password.length < 8) {
+      throw new AppError(400, 'Password must be at least 8 characters');
+    }
+    updates.passwordHash = await hashPassword(input.password);
+  }
+
+  if (input.preferredLanguage !== undefined) {
+    const allowedLanguages = ['vi', 'en'];
+    if (!allowedLanguages.includes(input.preferredLanguage)) {
+      throw new AppError(400, 'Preferred language is not supported');
+    }
+    updates.preferredLanguage = input.preferredLanguage;
+  }
+
+  if (input.sex !== undefined) {
+    if (input.sex !== null && !['male', 'female', 'other'].includes(input.sex)) {
+      throw new AppError(400, 'Invalid sex value');
+    }
+    updates.sex = input.sex;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return mapUser(existingUser);
+  }
+
+  await updateUser(userId, updates);
+  const updated = await findById(userId);
+  if (!updated) {
+    throw new AppError(500, 'Failed to retrieve updated user');
+  }
+  return mapUser(updated);
 }
 
