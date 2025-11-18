@@ -20,5 +20,9 @@ export const env = {
     name: process.env.DB_NAME as string,
   },
   jwtSecret: process.env.JWT_SECRET as string,
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID as string,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+  },
 };
 

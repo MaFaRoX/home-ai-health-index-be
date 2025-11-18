@@ -7,12 +7,14 @@ import {
   handleGetProfile,
   handleUpdateProfile,
 } from '../controllers/authController';
+import { handleGoogleAuth } from '../controllers/googleAuthController';
 import { requireAuth } from '../middlewares/authMiddleware';
 
 const authRouter = Router();
 
 authRouter.post('/register', handleRegister);
 authRouter.post('/login', handleLogin);
+authRouter.post('/google', handleGoogleAuth);
 authRouter.post('/refresh', handleRefresh);
 authRouter.post('/logout', handleLogout);
 authRouter.get('/me', requireAuth, handleGetProfile);

@@ -1,14 +1,29 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
 import { router } from './routes';
 import { AppError } from './utils/errors';
 
 const app = express();
 
-app.use(cors());
+// CORS configuration - allow Healthcare and CV_Online origins
+const corsOrigins = process.env.CORS_ORIGINS?.split(',') || [
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
+app.use(
+  cors({
+    origin: corsOrigins,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(morgan('dev'));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.use('/api', router);
 

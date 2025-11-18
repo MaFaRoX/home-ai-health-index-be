@@ -5,7 +5,7 @@ import { AppError } from '../utils/errors';
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: number;
-    phone: string;
+    username: string;
   };
 }
 
@@ -18,7 +18,7 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
   const token = header.slice('Bearer '.length);
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, phone: payload.phone };
+    req.user = { id: payload.sub, username: payload.username };
     next();
   } catch {
     next(new AppError(401, 'Invalid or expired token'));

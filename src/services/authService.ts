@@ -2,7 +2,7 @@ import { AppError } from '../utils/errors';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { signAccessToken } from '../utils/jwt';
 import { addDays, generateRefreshToken } from '../utils/token';
-import { createUser, findByPhone, findById, updateUser, UserRecord } from '../repositories/userRepository';
+import { createUser, findByUsername, findById, updateUser, UserRecord } from '../repositories/userRepository';
 import {
   createSession,
   deleteSessionByToken,
@@ -15,7 +15,7 @@ const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 export interface AuthenticatedUser {
   id: number;
   fullName: string;
-  phone: string;
+  username: string;
   preferredLanguage: string;
   sex: 'male' | 'female' | 'other' | null;
 }
@@ -29,14 +29,14 @@ export interface AuthTokens {
 
 export interface RegisterInput {
   fullName: string;
-  phone: string;
+  username: string;
   password: string;
   sex?: 'male' | 'female' | 'other';
   preferredLanguage?: string;
 }
 
 export interface LoginInput {
-  phone: string;
+  username: string;
   password: string;
 }
 
@@ -47,22 +47,22 @@ export interface UpdateProfileInput {
   sex?: 'male' | 'female' | 'other' | null;
 }
 
-function mapUser(record: UserRecord): AuthenticatedUser {
+export function mapUser(record: UserRecord): AuthenticatedUser {
   return {
     id: record.id,
     fullName: record.full_name,
-    phone: record.phone,
+    username: record.username,
     preferredLanguage: record.preferred_language,
     sex: record.sex,
   };
 }
 
-async function issueTokens(user: UserRecord): Promise<AuthTokens> {
+export async function issueTokens(user: UserRecord): Promise<AuthTokens> {
   const refreshToken = generateRefreshToken();
   const refreshExpires = addDays(new Date(), REFRESH_TOKEN_TTL_DAYS);
   await createSession(user.id, refreshToken, refreshExpires);
 
-  const accessToken = signAccessToken(user.id, user.phone);
+  const accessToken = signAccessToken(user.id, user.username);
 
   return {
     accessToken,
@@ -73,27 +73,27 @@ async function issueTokens(user: UserRecord): Promise<AuthTokens> {
 }
 
 export async function register(input: RegisterInput): Promise<{ user: AuthenticatedUser; tokens: AuthTokens }> {
-  const { fullName, phone, password, sex = null, preferredLanguage = 'vi' } = input;
+  const { fullName, username, password, sex = null, preferredLanguage = 'vi' } = input;
 
   if (!fullName || fullName.trim().length < 2) {
     throw new AppError(400, 'Full name must be at least 2 characters');
   }
-  if (!/^[0-9+]{8,15}$/.test(phone)) {
-    throw new AppError(400, 'Phone number must contain 8-15 digits or +');
+  if (!username || username.trim().length < 3) {
+    throw new AppError(400, 'Username must be at least 3 characters');
   }
   if (password.length < 8) {
     throw new AppError(400, 'Password must be at least 8 characters');
   }
 
-  const existingUser = await findByPhone(phone);
+  const existingUser = await findByUsername(username.trim());
   if (existingUser) {
-    throw new AppError(409, 'Phone number already registered');
+    throw new AppError(409, 'Username already registered');
   }
 
   const passwordHash = await hashPassword(password);
   const userId = await createUser({
     fullName: fullName.trim(),
-    phone,
+    username: username.trim(),
     passwordHash,
     sex,
     preferredLanguage,
@@ -112,14 +112,18 @@ export async function register(input: RegisterInput): Promise<{ user: Authentica
 }
 
 export async function login(input: LoginInput): Promise<{ user: AuthenticatedUser; tokens: AuthTokens }> {
-  const { phone, password } = input;
-  if (!phone || !password) {
-    throw new AppError(400, 'Phone and password are required');
+  const { username, password } = input;
+  if (!username || !password) {
+    throw new AppError(400, 'Username and password are required');
   }
 
-  const user = await findByPhone(phone);
+  const user = await findByUsername(username.trim());
   if (!user) {
     throw new AppError(401, 'Invalid credentials');
+  }
+
+  if (!user.password_hash) {
+    throw new AppError(401, 'This account uses Google sign-in. Please sign in with Google.');
   }
 
   const isValid = await verifyPassword(password, user.password_hash);
