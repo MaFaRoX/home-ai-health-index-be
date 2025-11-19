@@ -9,7 +9,7 @@ import {
   deleteUserCV,
   shareCV,
 } from '../services/cvService';
-import { getFileUrl } from '../utils/fileUpload';
+import { getFileUrl, deleteFile } from '../utils/fileUpload';
 
 export async function handleCreateCV(
   req: AuthenticatedRequest,
@@ -214,6 +214,44 @@ export async function handleUploadImage(
       size: req.file.size,
       mimetype: req.file.mimetype,
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function handleDeleteImage(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const { filename } = req.body;
+
+    if (!filename || typeof filename !== 'string') {
+      res.status(400).json({ message: 'filename is required' });
+      return;
+    }
+
+    // Extract filename from URL if full URL is provided
+    // e.g., "/uploads/cv/image-123.jpg" or "http://localhost:4000/uploads/cv/image-123.jpg"
+    let actualFilename = filename;
+    if (filename.includes('/')) {
+      actualFilename = filename.split('/').pop() || filename;
+    }
+
+    // Security: Ensure filename doesn't contain path traversal
+    if (actualFilename.includes('..') || actualFilename.includes('/') || actualFilename.includes('\\')) {
+      res.status(400).json({ message: 'Invalid filename' });
+      return;
+    }
+
+    deleteFile(actualFilename);
+    res.status(200).json({ message: 'Image deleted successfully' });
   } catch (error) {
     next(error);
   }

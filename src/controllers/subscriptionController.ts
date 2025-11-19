@@ -78,6 +78,10 @@ export async function handleCreateSubscription(
       return;
     }
 
+    // Check if subscription already exists to determine if we're extending
+    const existingSubscription = await getUserSubscriptionForApp(req.user.id, appSlug);
+    const wasExtended = existingSubscription !== null && existingSubscription.status === 'active';
+
     const subscription = await createUserSubscription(
       req.user.id,
       appSlug,
@@ -86,7 +90,7 @@ export async function handleCreateSubscription(
       paymentMethod || null,
     );
 
-    res.status(201).json({ subscription });
+    res.status(201).json({ subscription, extended: wasExtended });
   } catch (error) {
     next(error);
   }

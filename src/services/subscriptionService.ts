@@ -6,6 +6,7 @@ import {
   getUserSubscriptions,
   createSubscription,
   updateSubscriptionStatus,
+  extendSubscription,
   SubscriptionWithPlan,
 } from '../repositories/subscriptionRepository';
 
@@ -150,7 +151,16 @@ export async function createUserSubscription(
   // Check if user already has an active subscription
   const existingSubscription = await getUserSubscription(userId, app.id);
   if (existingSubscription && existingSubscription.status === 'active') {
-    throw new AppError(409, 'User already has an active subscription for this app');
+    // Extend the existing subscription instead of throwing an error
+    await extendSubscription(existingSubscription.id, durationDays);
+    
+    // Fetch the updated subscription
+    const updatedSubscription = await getUserSubscription(userId, app.id);
+    if (!updatedSubscription) {
+      throw new AppError(500, 'Failed to retrieve updated subscription');
+    }
+
+    return mapSubscription(updatedSubscription);
   }
 
   await createSubscription(userId, app.id, plan.id, durationDays, paymentMethod);

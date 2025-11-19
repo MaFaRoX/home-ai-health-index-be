@@ -8,6 +8,7 @@ import {
   handleDeleteCV,
   handleShareCV,
   handleUploadImage,
+  handleDeleteImage,
 } from '../controllers/cvController';
 import { requireAuth } from '../middlewares/authMiddleware';
 import { upload } from '../utils/fileUpload';
@@ -28,6 +29,9 @@ cvRouter.get('/', handleGetCVs);
 
 // Upload image (single file)
 cvRouter.post('/upload-image', upload.single('image'), handleUploadImage);
+
+// Delete image
+cvRouter.delete('/delete-image', handleDeleteImage);
 
 // Get specific CV
 cvRouter.get('/:id', handleGetCV);

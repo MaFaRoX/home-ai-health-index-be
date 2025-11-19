@@ -132,3 +132,16 @@ export async function expireOldSubscriptions(): Promise<void> {
   );
 }
 
+export async function extendSubscription(
+  subscriptionId: number,
+  additionalDays: number,
+): Promise<void> {
+  await pool.execute(
+    `UPDATE user_subscriptions 
+     SET end_date = DATE_ADD(end_date, INTERVAL ? DAY),
+         updated_at = NOW()
+     WHERE id = ?`,
+    [additionalDays, subscriptionId],
+  );
+}
+
