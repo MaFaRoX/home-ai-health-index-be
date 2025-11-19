@@ -12,7 +12,7 @@ export interface UserRecord extends RowDataPacket {
   google_id: string | null;
   google_email: string | null;
   avatar_url: string | null;
-  auth_provider: 'phone' | 'google' | 'both';
+  auth_provider: 'local' | 'google' | 'both';
   created_at: Date;
   updated_at: Date;
 }
@@ -46,8 +46,8 @@ export async function findById(userId: number): Promise<UserRecord | null> {
 export async function createUser(input: CreateUserInput): Promise<number> {
   const { fullName, username, passwordHash, email = null, sex = null, preferredLanguage = 'vi' } = input;
   const [result] = await pool.execute<ResultSetHeader>(
-    `INSERT INTO users (full_name, username, email, password_hash, sex, preferred_language)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (full_name, username, email, password_hash, sex, preferred_language, auth_provider)
+     VALUES (?, ?, ?, ?, ?, ?, 'local')`,
     [fullName, username, email, passwordHash, sex, preferredLanguage],
   );
   return result.insertId;

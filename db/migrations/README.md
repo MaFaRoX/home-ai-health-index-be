@@ -10,6 +10,8 @@ Migrations must be run in numerical order:
 2. **002_multi_app_subscriptions.sql** - Multi-app subscription system
 3. **003_google_oauth.sql** - Google OAuth support
 4. **004_cv_online_tables.sql** - CV_Online application tables
+5. **005_rename_phone_to_username.sql** - Rename phone column to username
+6. **006_update_auth_provider_enum.sql** - Update auth_provider enum from 'phone' to 'local'
 
 ## Running Migrations
 
@@ -22,6 +24,8 @@ mysql -u your_user -p your_database < db/migrations/001_init.sql
 mysql -u your_user -p your_database < db/migrations/002_multi_app_subscriptions.sql
 mysql -u your_user -p your_database < db/migrations/003_google_oauth.sql
 mysql -u your_user -p your_database < db/migrations/004_cv_online_tables.sql
+mysql -u your_user -p your_database < db/migrations/005_rename_phone_to_username.sql
+mysql -u your_user -p your_database < db/migrations/006_update_auth_provider_enum.sql
 ```
 
 ### Using MySQL Workbench or phpMyAdmin
@@ -58,6 +62,16 @@ Adds:
 Creates:
 - `cvs` table - Stores CV data in JSON format
 - `cv_assets` table - Optional table for tracking uploaded images/files
+
+### 005_rename_phone_to_username.sql
+
+Modifies:
+- `users` table - Renames `phone` column to `username` and extends length from VARCHAR(20) to VARCHAR(100)
+
+### 006_update_auth_provider_enum.sql
+
+Modifies:
+- `users` table - Updates `auth_provider` enum from 'phone' to 'local' to align with username-based authentication
 
 ## Important Notes
 
